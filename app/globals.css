@@ -37,3 +37,28 @@ body {
 .content-header {
   @apply text-2xl font-bold mb-5  pt-0 pb-3 border-b-2 border-teal-600 text-teal-600;
 }
+
+/* Custom scrollbar styles for sidebar */
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: #0d9488;
+  border-radius: 3px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #0f766e;
+}
+
+/* Firefox scrollbar */
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #0d9488 transparent;
+}
+

@@ -9,7 +9,7 @@ import Modal from '../modal';
 interface Product {
     id: string;
     serial: string;
-    name: string;
+    name: string; 
     release: string;
     color: string;
     price: number;
@@ -28,15 +28,18 @@ export default function Page() {
 
     // Form states
     const [name, setName] = useState('');
+    const [serial, setSerial] = useState(''); 
     const [release, setRelease] = useState('');
     const [color, setColor] = useState('');
-    const [price, setPrice] = useState(0);
+    const [price, setPrice] = useState<string>('');
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
     const [remarks, setRemarks] = useState('');
 
     const [products, setProducts] = useState<Product[]>([]);
+    const [id, setId] = useState<string>('');
+    const [qty, setQty] = useState(1);
 
     useEffect(() => {
         fetchData();
@@ -48,39 +51,41 @@ export default function Page() {
             const response = await axios.get(`${config.apiUrl}/buy/list`);
             setProducts(response.data);
         } catch (err: any) {
-            Swal.fire({
-                icon: 'error',
-                title: 'ผิดพลาด',
-                text: err.message || 'ไม่สามารถโหลดข้อมูลได้',
-            });
+            Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: err.message || 'ไม่สามารถโหลดข้อมูลได้' });
         } finally {
             setIsLoading(false);
         }
     }
 
     const resetForm = () => {
+        setId('');
         setName('');
+        setSerial('');
         setRelease('');
         setColor('');
-        setPrice(0);
+        setPrice('');
         setCustomerName('');
         setCustomerPhone('');
         setCustomerAddress('');
         setRemarks('');
         setEditingProduct(null);
+        setQty(1);
     }
 
     const handleOpenModal = (product?: Product) => {
         if (product) {
+            setId(product.id);
             setEditingProduct(product);
             setName(product.name);
+            setSerial(product.serial); 
             setRelease(product.release);
             setColor(product.color);
-            setPrice(product.price);
+            setPrice(product.price ? product.price.toString() : '');
             setCustomerName(product.customerName);
             setCustomerPhone(product.customerPhone);
             setCustomerAddress(product.customerAddress);
             setRemarks(product.remarks);
+            setQty(1);
         } else {
             resetForm();
         }
@@ -93,42 +98,56 @@ export default function Page() {
     }
 
     const handleSave = async () => {
-        if (!name || !release || !price || !customerName) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'ข้อมูลไม่ครบถ้วน',
-                text: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน',
-            });
+        if (!name || !serial || !release || !price || !customerName) {
+            Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน' });
+            return;
+        }
+        const numericPrice = parseFloat(price);
+        if (isNaN(numericPrice) || numericPrice < 0) {
+            Swal.fire({ icon: 'warning', title: 'ราคาไม่ถูกต้อง', text: 'กรุณากรอกราคาเป็นตัวเลขที่ถูกต้อง' });
             return;
         }
 
         try {
-            const payload = {
-                name,
-                release,
-                color,
-                price,
-                customerName,
-                customerPhone,
-                customerAddress,
-                remarks
-            };
+            const finalPrice = Number(numericPrice);
+            
+            if (id !== '') {
+                // UPDATE Payload: Does NOT include 'qty' to prevent Prisma error
+                const updatePayload = {
+                    name,
+                    serial,
+                    release,
+                    color,
+                    price: finalPrice,
+                    customerName,
+                    customerPhone,
+                    customerAddress,
+                    remarks
+                };
+                await axios.put(`${config.apiUrl}/buy/update/${id}`, updatePayload);
+                Swal.fire({ icon: 'success', title: 'อัปเดตข้อมูลเรียบร้อย', timer: 2000, showConfirmButton: false });
 
-            if (editingProduct) {
-                await axios.put(`${config.apiUrl}/buy/update/${editingProduct.id}`, payload);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'อัปเดตข้อมูลเรียบร้อย',
-                    text: 'ข้อมูลถูกอัปเดตเรียบร้อยแล้ว',
-                    timer: 2000
-                });
             } else {
-                await axios.post(`${config.apiUrl}/buy/create`, payload);
+                // CREATE Payload: Includes 'qty' for the backend to loop
+                const createPayload = {
+                    name,
+                    serial,
+                    release,
+                    color,
+                    price: finalPrice,
+                    customerName,
+                    customerPhone,
+                    customerAddress,
+                    remarks,
+                    qty: qty 
+                };
+                await axios.post(`${config.apiUrl}/buy/create`, createPayload);
                 Swal.fire({
                     icon: 'success',
                     title: 'บันทึกข้อมูลเรียบร้อย',
-                    text: 'ข้อมูลถูกบันทึกเรียบร้อยแล้ว',
-                    timer: 2000
+                    text: `สร้างรายการใหม่ ${qty} รายการ`,
+                    timer: 2000,
+                    showConfirmButton: false
                 });
             }
 
@@ -136,18 +155,14 @@ export default function Page() {
             setIsOpen(false);
             fetchData();
         } catch (error: any) {
-            Swal.fire({
-                icon: 'error',
-                title: 'ผิดพลาด',
-                text: error.response?.data?.message || 'ไม่สามารถบันทึกข้อมูลได้'
-            });
+            Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: error.response?.data?.message || 'ไม่สามารถบันทึกข้อมูลได้' });
         }
     };
 
     const handleDelete = async (productId: string) => {
         const result = await Swal.fire({
             title: 'ยืนยันการลบ',
-            text: 'คุณต้องการลบรายการนี้หรือไม่? การดำเนินการนี้ไม่สามารถยกเลิกได้',
+            text: 'คุณต้องการลบรายการนี้หรือไม่?',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -155,42 +170,30 @@ export default function Page() {
             confirmButtonText: 'ลบ',
             cancelButtonText: 'ยกเลิก'
         });
-
         if (result.isConfirmed) {
             try {
-                await axios.delete(`${config.apiUrl}/buy/delete/${productId}`);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'ลบข้อมูลเรียบร้อย',
-                    text: 'รายการถูกลบเรียบร้อยแล้ว',
-                    timer: 2000
-                });
+                await axios.delete(`${config.apiUrl}/buy/remove/${productId}`);
+                Swal.fire({ icon: 'success', title: 'ลบข้อมูลเรียบร้อย', timer: 2000, showConfirmButton: false });
                 fetchData();
             } catch (error: any) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'ผิดพลาด',
-                    text: error.response?.data?.message || 'ไม่สามารถลบข้อมูลได้'
-                });
+                Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: error.response?.data?.message || 'ไม่สามารถลบข้อมูลได้' });
             }
         }
     };
 
     const filteredProducts = products.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.release.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.serial.toLowerCase().includes(searchTerm.toLowerCase())
+        (product.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.serial || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.release || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('th-TH', {
-            style: 'currency',
-            currency: 'THB'
-        }).format(price);
+        return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(price);
     };
 
     const formatDate = (dateString: string) => {
+        if (!dateString) return '-';
         return new Date(dateString).toLocaleDateString('th-TH');
     };
 
@@ -219,18 +222,16 @@ export default function Page() {
                     <div className="bg-white rounded-lg border border-gray-200 p-6">
                         <div className="flex flex-col sm:flex-row gap-4">
                             <div className="flex-1">
-                                {/* --- Start of Corrected Code --- */}
                                 <div className="flex items-center border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
                                     <i className="fa-solid fa-search text-gray-400 pl-3 pointer-events-none"></i>
                                     <input
                                         type="text"
-                                        placeholder="ค้นหารายการ..."
+                                        placeholder="ค้นหาด้วยชื่อ, S/N, ลูกค้า, หรือรุ่น..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="w-full pl-2 pr-4 py-2 bg-transparent border-none rounded-md focus:outline-none focus:ring-0"
                                     />
                                 </div>
-                                {/* --- End of Corrected Code --- */}
                             </div>
                             <div className="text-sm text-gray-600 flex items-center">
                                 <span>พบ {filteredProducts.length} รายการ</span>
@@ -250,56 +251,36 @@ export default function Page() {
                                 <table className="w-full">
                                     <thead className="bg-gray-50 border-b border-gray-200">
                                         <tr>
-                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ลำดับ</th>
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อสินค้า</th>
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">หมายเลขซีเรียล</th>
                                             <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อลูกค้า</th>
                                             <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">รุ่น</th>
-                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สี</th>
                                             <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ราคา</th>
-                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">เบอร์โทรศัพท์</th>
-                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">หมายเหตุ</th>
                                             <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">วันที่</th>
                                             <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-24">จัดการ</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {filteredProducts.map((product, index) => (
+                                        {filteredProducts.map((product) => (
                                             <tr key={product.id} className="hover:bg-gray-50 transition-colors duration-150">
-                                                <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
-                                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{product.customerName}</td>
+                                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{product.name}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">{product.serial}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">{product.customerName}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{product.release}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-900">
-                                                    {product.color && (
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                            {product.color}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                                                    {formatPrice(product.price)}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-900">{product.customerPhone}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" title={product.remarks}>
-                                                    {product.remarks || '-'}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-500">
-                                                    {product.createdAt ? formatDate(product.createdAt) : '-'}
-                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-900 font-medium">{formatPrice(product.price)}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-500">{formatDate(product.createdAt)}</td>
                                                 <td className="px-6 py-4 text-center">
                                                     <div className="flex items-center justify-center space-x-2">
                                                         <button
-                                                            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-150"
+                                                            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
                                                             onClick={() => handleOpenModal(product)}
                                                             title="แก้ไข"
-                                                        >
-                                                            <i className="fa-solid fa-edit"></i>
-                                                        </button>
+                                                        ><i className="fa-solid fa-edit"></i></button>
                                                         <button
-                                                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors duration-150"
+                                                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md"
                                                             onClick={() => handleDelete(product.id)}
                                                             title="ลบ"
-                                                        >
-                                                            <i className="fa-solid fa-trash"></i>
-                                                        </button>
+                                                        ><i className="fa-solid fa-trash"></i></button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -308,23 +289,11 @@ export default function Page() {
                                 </table>
                             </div>
                         ) : (
-                            /* Empty State */
                             <div className="text-center py-12 text-gray-500">
-                                <i className="fa-solid fa-shopping-cart text-6xl mb-4 text-gray-300"></i>
+                                <i className="fa-solid fa-barcode text-6xl mb-4 text-gray-300"></i>
                                 <p className="text-xl font-medium text-gray-600 mb-2">
                                     {searchTerm ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีรายการซื้อ'}
                                 </p>
-                                <p className="text-sm text-gray-500 mb-4">
-                                    {searchTerm ? 'ลองเปลี่ยนคำค้นหาหรือ' : 'คลิกปุ่ม "เพิ่มรายการ" เพื่อเริ่มต้น'}
-                                </p>
-                                {searchTerm && (
-                                    <button
-                                        onClick={() => setSearchTerm('')}
-                                        className="text-teal-600 hover:text-teal-700 font-medium"
-                                    >
-                                        ล้างการค้นหา
-                                    </button>
-                                )}
                             </div>
                         )}
                     </div>
@@ -332,18 +301,11 @@ export default function Page() {
             </div>
 
             {/* Modal */}
-            <Modal
-                title={editingProduct ? "แก้ไขรายการซื้อ" : "เพิ่มรายการซื้อ"}
-                isOpen={isOpen}
-                onClose={handleCloseModal}
-                size="lg"
-            >
+            <Modal title={id !== '' ? "แก้ไขรายการซื้อ" : "เพิ่มรายการซื้อ"} isOpen={isOpen} onClose={handleCloseModal} size="lg">
                 <div className="space-y-6">
-                    {/* Product Information Section */}
                     <div>
                         <h3 className="text-lg font-medium text-gray-800 mb-4 pb-2 border-b border-gray-200">
-                            <i className="fa-solid fa-box mr-2 text-teal-600"></i>
-                            ข้อมูลสินค้า
+                            <i className="fa-solid fa-box mr-2 text-teal-600"></i>ข้อมูลสินค้า
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -354,8 +316,21 @@ export default function Page() {
                                     type="text"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                                     placeholder="ชื่อสินค้า"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    หมายเลขซีเรียล <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={serial}
+                                    onChange={(e) => setSerial(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    placeholder="หมายเลขซีเรียล"
                                     required
                                 />
                             </div>
@@ -367,7 +342,7 @@ export default function Page() {
                                     type="text"
                                     value={release}
                                     onChange={(e) => setRelease(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                                     placeholder="รุ่นสินค้า"
                                     required
                                 />
@@ -380,7 +355,7 @@ export default function Page() {
                                     type="text"
                                     value={color}
                                     onChange={(e) => setColor(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                                     placeholder="สีสินค้า"
                                 />
                             </div>
@@ -389,13 +364,30 @@ export default function Page() {
                                     ราคา <span className="text-red-500">*</span>
                                 </label>
                                 <input
-    type="text" // Changed from "number" to "text"
-    value={price}
-    onChange={(e) => setPrice(e.target.value)} // Removed the Number() conversion
-    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-    placeholder="Enter price..." // Added a placeholder for better UX
-    required
-/>
+                                    type="text"
+                                    value={price}
+                                    onChange={(e) => setPrice(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    placeholder="ระบุราคา"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    จำนวน
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={qty}
+                                    onChange={(e) => {
+                                        const value = parseInt(e.target.value, 10);
+                                        setQty(value > 0 ? value : 1);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    disabled={!!editingProduct}
+                                    required
+                                />
                             </div>
                         </div>
                     </div>
@@ -403,8 +395,7 @@ export default function Page() {
                     {/* Customer Information Section */}
                     <div>
                         <h3 className="text-lg font-medium text-gray-800 mb-4 pb-2 border-b border-gray-200">
-                            <i className="fa-solid fa-user mr-2 text-teal-600"></i>
-                            ข้อมูลลูกค้า
+                            <i className="fa-solid fa-user mr-2 text-teal-600"></i>ข้อมูลลูกค้า
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -415,32 +406,28 @@ export default function Page() {
                                     type="text"
                                     value={customerName}
                                     onChange={(e) => setCustomerName(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                                     placeholder="ชื่อลูกค้า"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    เบอร์โทรศัพท์
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">เบอร์โทรศัพท์</label>
                                 <input
                                     type="tel"
                                     value={customerPhone}
                                     onChange={(e) => setCustomerPhone(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                                     placeholder="เบอร์โทรศัพท์"
                                 />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    ที่อยู่
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">ที่อยู่</label>
                                 <input
                                     type="text"
                                     value={customerAddress}
                                     onChange={(e) => setCustomerAddress(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                                     placeholder="ที่อยู่ลูกค้า"
                                 />
                             </div>
@@ -450,19 +437,16 @@ export default function Page() {
                     {/* Additional Information Section */}
                     <div>
                         <h3 className="text-lg font-medium text-gray-800 mb-4 pb-2 border-b border-gray-200">
-                            <i className="fa-solid fa-info-circle mr-2 text-teal-600"></i>
-                            ข้อมูลเพิ่มเติม
+                            <i className="fa-solid fa-info-circle mr-2 text-teal-600"></i>ข้อมูลเพิ่มเติม
                         </h3>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                หมายเหตุ
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ</label>
                             <textarea
                                 value={remarks}
                                 onChange={(e) => setRemarks(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                                 rows={3}
-                                placeholder="หมายเหตุเพิ่มเติม เช่น เงื่อนไขการชำระเงิน, วันที่ส่งมอบ..."
+                                placeholder="หมายเหตุเพิ่มเติม..."
                             />
                         </div>
                     </div>
@@ -471,13 +455,11 @@ export default function Page() {
                     <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                         <button
                             onClick={handleCloseModal}
-                            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
-                        >
-                            ยกเลิก
-                        </button>
+                            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                        >ยกเลิก</button>
                         <button
                             onClick={handleSave}
-                            className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors duration-200 flex items-center"
+                            className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 flex items-center"
                         >
                             <i className={`fa-solid ${editingProduct ? 'fa-save' : 'fa-plus'} mr-2`}></i>
                             {editingProduct ? 'อัปเดต' : 'บันทึก'}
@@ -486,5 +468,5 @@ export default function Page() {
                 </div>
             </Modal>
         </>
-    )
+    );
 }

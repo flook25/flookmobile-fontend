@@ -1,90 +1,80 @@
-// sidebar.tsx
+'use client'
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+// Define the menu items in an array for easy management
+const menuItems = [
+    { href: '/backoffice/dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard' },
+    { href: '/backoffice/buy', icon: 'fa-shopping-cart', label: 'ซื้อสินค้า' },
+    { href: '/backoffice/sell', icon: 'fa-tag', label: 'ขายสินค้า' },
+    { href: '/backoffice/repair', icon: 'fa-wrench', label: 'ซ่อมสินค้า' },
+    { href: '/backoffice/company', icon: 'fa-store', label: 'ข้อมูลร้าน' },
+];
 
 export default function Sidebar() {
+    const pathname = usePathname();
+
+    const isActive = (path: string) => {
+        // Use startsWith for parent routes to also be active, or === for exact match
+        return pathname === path;
+    };
+
+    const handleLogout = () => {
+        // Add your logout logic here, e.g., clearing tokens, redirecting, etc.
+        console.log("Logout action triggered");
+        // Example: router.push('/login');
+    };
+
     return (
-        <div className="bg-teal-400 h-screen w-64">
-            <div className="p-5 bg-teal-800 text-white">
-                <h1 className="font-bold">
-                    FlookMobile Version 1.0
+        // Single sidebar container with a professional, dark theme
+        <div className="fixed left-0 top-0 h-screen w-64 bg-teal-800 text-white z-50 shadow-lg flex flex-col">
+
+            {/* Header / Logo Section */}
+            <div className="p-5 text-center border-b border-teal-700">
+                <h1 className="font-bold text-xl">
+                    FlookMobile
                 </h1>
+                <p className="text-xs text-teal-300">Version 1.0</p>
             </div>
 
-            <div className="p-5 text-white text-xl flex flex-col gap-2">
-                {/* 
-                แต่ละเมนูจะถูกครอบด้วย div ของตัวเอง
-                เพื่อให้ยืดหยุ่นในการเพิ่ม Badge หรือองค์ประกอบอื่นๆ ในอนาคต
-                 */}
-                <div>
+            {/* Main Navigation (dynamically generated and takes up the available space) */}
+            <nav className="flex-grow p-4 space-y-2">
+                {menuItems.map((item) => (
                     <Link
-                        href="/backoffice/dashboard"
-                        className="flex items-center p-2 rounded-md transition-colors duration-200 hover:bg-teal-500"
+                        key={item.href}
+                        href={item.href}
+                        // Conditionally apply active styles
+                        className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors duration-200 hover:bg-teal-700 ${
+                            isActive(item.href) ? 'bg-teal-600 font-semibold shadow-lg' : ''
+                        }`}
                     >
-                        <i className="fa fa-tachometer-alt w-6 text-center mr-3"></i>
-                        <span>Dashboard</span>
+                        <i className={`fa-solid ${item.icon} w-6 text-center text-lg`}></i>
+                        <span>{item.label}</span>
                     </Link>
-                </div>
+                ))}
+            </nav>
 
-                <div>
-                    <Link
-                        href="/backoffice/buy"
-                        className="flex items-center p-2 rounded-md transition-colors duration-200 hover:bg-teal-500"
-                    >
-                        {/* เปลี่ยนไอคอนให้สื่อความหมายมากขึ้น */}
-                        <i className="fa fa-shopping-cart w-6 text-center mr-3"></i>
-                        <span>ซื้อสินค้า</span>
-                    </Link>
-                </div>
+            {/* Footer / User & Logout Section (Pushed to the bottom) */}
+            <div className="p-4 border-t border-teal-700 space-y-2">
+                <Link
+                    href="/backoffice/users"
+                    className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors duration-200 hover:bg-teal-700 ${
+                        isActive('/backoffice/users') ? 'bg-teal-600 font-semibold shadow-lg' : ''
+                    }`}
+                >
+                    <i className="fa-solid fa-users w-6 text-center text-lg"></i>
+                    <span>ผู้ใช้งาน</span>
+                </Link>
 
-                <div>
-                    <Link
-                        href="/backoffice/sell"
-                        className="flex items-center p-2 rounded-md transition-colors duration-200 hover:bg-teal-500"
-                    >
-                        {/* เปลี่ยนไอคอนให้สื่อความหมายมากขึ้น */}
-                        <i className="fa fa-tag w-6 text-center mr-3"></i>
-                        <span>ขายสินค้า</span>
-                    </Link>
-                </div>
-
-
-                <div>
-                    <Link
-                        href="/backoffice/repair"
-                        className="flex items-center p-2 rounded-md transition-colors duration-200 hover:bg-teal-500"
-                    >
-                        {/* ไอคอนรูปประแจ สื่อถึงการซ่อมแซม */}
-                        <i className="fa fa-wrench w-6 text-center mr-3"></i>
-                        <span>ซ่อมสินค้า</span>
-                    </Link>
-                </div>
-
-                <div>
-                    <Link
-                        href="/backoffice/company"
-                        className="flex items-center p-2 rounded-md transition-colors duration-200 hover:bg-teal-500"
-                    >
-                        {/* เปลี่ยนไอคอนให้ไม่ซ้ำและสื่อถึงร้านค้า */}
-                        <i className="fa fa-store w-6 text-center mr-3"></i>
-                        <span>ข้อมูลร้าน</span>
-                    </Link>
-                </div>
-
-                <div>
-                    <Link
-                        href="/backoffice/users"  // หรือ path อื่นๆ ที่ต้องการ
-                        className="flex items-center p-2 rounded-md transition-colors duration-200 hover:bg-teal-500"
-                    >
-                        {/* ไอคอนรูปกลุ่มคน สื่อถึงผู้ใช้งานหลายคน */}
-                        <i className="fa fa-users w-6 text-center mr-3"></i>
-                        <span>ผู้ใช้งาน</span>
-                    </Link>
-                </div>
-
+                <button 
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-md hover:bg-teal-700 transition-colors duration-200"
+                >
+                    <i className="fa-solid fa-sign-out-alt w-6 text-center text-lg"></i>
+                    <span>ออกจากระบบ</span>
+                </button>
             </div>
-
-
         </div>
-    )
+    );
 }
