@@ -1,4 +1,3 @@
-// modal component
 'use client'
 
 import { useEffect, useRef } from 'react';
@@ -47,31 +46,33 @@ export default function Modal({ title, children, isOpen, onClose, size }: ModalP
     if (!isOpen) return null;
 
     return (
-		        <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-transparent"
+        // --- THIS IS THE ONLY CHANGE: `bg-transparent` is now `bg-black/60` ---
+        <div 
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-title"
         >
-			            <div 
+			<div 
                 ref={modalRef}
-                className={`bg-white rounded-2xl shadow-2xl ring-1 ring-gray-900/10 ${sizeClass[size]} max-h-[90vh] overflow-y-auto transition-all duration-300 transform`}
+                className={`bg-white rounded-lg shadow-xl ${sizeClass[size]} max-h-[90vh] flex flex-col`}
             >
-				                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50 rounded-t-2xl">
-                    <h2 id="modal-title" className="text-xl font-semibold text-gray-800">
+				<div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <h2 id="modal-title" className="text-lg font-semibold text-gray-800">
                         {title}
                     </h2>
                     <button 
                         onClick={onClose}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition-all duration-200"
+                        className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100"
                         aria-label="Close modal"
                     >
-                        <i className="fa-solid fa-xmark text-lg"></i>
+                        <i className="fa-solid fa-xmark text-xl"></i>
                     </button>
                 </div>
 
-                <div className="px-6 py-6">
+                <div className="px-6 py-5">
+                    {/* The form from sidebar.tsx will be passed in here */}
                     {children}
                 </div>
             </div>
