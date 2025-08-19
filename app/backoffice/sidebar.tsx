@@ -1,7 +1,11 @@
 'use client'
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // Correct hook import
+import Swal from "sweetalert2";
+import axios from "axios";
+import { config } from "../config";
+import { useEffect, useState } from "react";
 
 // Define the menu items in an array for easy management
 const menuItems = [
@@ -14,16 +18,32 @@ const menuItems = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const [name, setName] = useState('');
+    const [level, setLevel] = useState('');
+    const router = useRouter(); // Use the hook from 'next/navigation'
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${config.apiUrl}/user/info`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        setName(res.data.name);
+        setLevel(res.data.level);
+      }
 
     const isActive = (path: string) => {
-        // Use startsWith for parent routes to also be active, or === for exact match
         return pathname === path;
     };
 
     const handleLogout = () => {
-        // Add your logout logic here, e.g., clearing tokens, redirecting, etc.
-        console.log("Logout action triggered");
-        // Example: router.push('/login');
+        localStorage.removeItem('token');
+        router.push('/');
     };
 
     return (
@@ -45,9 +65,8 @@ export default function Sidebar() {
                         key={item.href}
                         href={item.href}
                         // Conditionally apply active styles
-                        className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors duration-200 hover:bg-teal-700 ${
-                            isActive(item.href) ? 'bg-teal-600 font-semibold shadow-lg' : ''
-                        }`}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors duration-200 hover:bg-teal-700 ${isActive(item.href) ? 'bg-teal-600 font-semibold shadow-lg' : ''
+                            }`}
                     >
                         <i className={`fa-solid ${item.icon} w-6 text-center text-lg`}></i>
                         <span>{item.label}</span>
@@ -56,18 +75,29 @@ export default function Sidebar() {
             </nav>
 
             {/* Footer / User & Logout Section (Pushed to the bottom) */}
+
             <div className="p-4 border-t border-teal-700 space-y-2">
+                {/* User Information - NOT a link */}
+                <div className="flex items-center gap-3 px-4 py-3 text-teal-200">
+                    <i className="fa-solid fa-user-circle w-6 text-center text-xl"></i>
+                    <div>
+                        <div className="font-semibold text-white">{name}</div>
+                        <div className="text-xs">{level}</div>
+                    </div>
+                </div>
+
+                {/* Navigation Link for Users */}
                 <Link
                     href="/backoffice/users"
-                    className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors duration-200 hover:bg-teal-700 ${
-                        isActive('/backoffice/users') ? 'bg-teal-600 font-semibold shadow-lg' : ''
-                    }`}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors duration-200 hover:bg-teal-700 ${isActive('/backoffice/users') ? 'bg-teal-600 font-semibold shadow-lg' : ''
+                        }`}
                 >
                     <i className="fa-solid fa-users w-6 text-center text-lg"></i>
                     <span>ผู้ใช้งาน</span>
                 </Link>
 
-                <button 
+                {/* Logout Button */}
+                <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-md hover:bg-teal-700 transition-colors duration-200"
                 >
